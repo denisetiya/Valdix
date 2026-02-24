@@ -1,0 +1,43 @@
+{
+  "name": "valdix",
+  "version": "0.1.0",
+  "description": "Zero-dependency high-performance schema validation with multilingual errors.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "pnpm run clean && tsc -p tsconfig.build.json",
+    "clean": "node ./scripts/clean.mjs",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "pnpm run build && node --test tests/*.test.mjs",
+    "bench": "pnpm run build && node benchmarks/basic.bench.mjs"
+  },
+  "keywords": [
+    "validation",
+    "schema",
+    "typescript",
+    "zod-like",
+    "i18n"
+  ],
+  "author": "Deni Setiya",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.0.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.56.1"
+  }
+}

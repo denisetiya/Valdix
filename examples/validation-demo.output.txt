@@ -1,0 +1,239 @@
+=== SAFE PARSE FAILED ===
+{
+  "message": "Validation failed",
+  "issues": [
+    {
+      "code": "too_small",
+      "kind": "string",
+      "minimum": 3,
+      "inclusive": true,
+      "path": [
+        "name"
+      ],
+      "message": "Panjang teks minimal 3 karakter."
+    },
+    {
+      "code": "invalid_string",
+      "validation": "email",
+      "path": [
+        "email"
+      ],
+      "message": "Format email tidak valid."
+    },
+    {
+      "code": "invalid_array",
+      "validation": "unique",
+      "path": [
+        "tags",
+        1
+      ],
+      "message": "Daftar tidak boleh berisi data duplikat."
+    },
+    {
+      "code": "invalid_string",
+      "validation": "url",
+      "path": [
+        "profile",
+        "socials",
+        0,
+        "url"
+      ],
+      "message": "Format URL tidak valid."
+    },
+    {
+      "code": "unknown_keys",
+      "keys": [
+        "extra"
+      ],
+      "path": [],
+      "message": "Key tidak dikenal: extra."
+    }
+  ],
+  "formErrors": [
+    "Key tidak dikenal: extra."
+  ],
+  "fieldErrors": {
+    "name": [
+      "Panjang teks minimal 3 karakter."
+    ],
+    "email": [
+      "Format email tidak valid."
+    ],
+    "tags.1": [
+      "Daftar tidak boleh berisi data duplikat."
+    ],
+    "profile.socials.0.url": [
+      "Format URL tidak valid."
+    ]
+  },
+  "summary": [
+    {
+      "field": "name",
+      "label": "Nama",
+      "code": "too_small",
+      "message": "Panjang teks minimal 3 karakter."
+    },
+    {
+      "field": "email",
+      "label": "Email",
+      "code": "invalid_string",
+      "message": "Format email tidak valid."
+    },
+    {
+      "field": "tags.1",
+      "label": "Tag kedua",
+      "code": "invalid_array",
+      "message": "Daftar tidak boleh berisi data duplikat."
+    },
+    {
+      "field": "profile.socials.0.url",
+      "label": "URL sosial pertama",
+      "code": "invalid_string",
+      "message": "Format URL tidak valid."
+    },
+    {
+      "field": "",
+      "label": "Form",
+      "code": "unknown_keys",
+      "message": "Key tidak dikenal: extra."
+    }
+  ],
+  "details": [
+    {
+      "path": "name",
+      "label": "Nama",
+      "code": "too_small",
+      "message": "Panjang teks minimal 3 karakter."
+    },
+    {
+      "path": "email",
+      "label": "Email",
+      "code": "invalid_string",
+      "message": "Format email tidak valid."
+    },
+    {
+      "path": "tags.1",
+      "label": "Tag kedua",
+      "code": "invalid_array",
+      "message": "Daftar tidak boleh berisi data duplikat."
+    },
+    {
+      "path": "profile.socials.0.url",
+      "label": "URL sosial pertama",
+      "code": "invalid_string",
+      "message": "Format URL tidak valid."
+    },
+    {
+      "path": "",
+      "label": "Form",
+      "code": "unknown_keys",
+      "message": "Key tidak dikenal: extra."
+    }
+  ]
+}
+
+first email issue: Format email tidak valid.
+has duplicate tag issue: true
+issues at profile.socials.0.url: 1
+summary: [
+  {
+    "field": "name",
+    "label": "Name",
+    "code": "too_small",
+    "message": "Panjang teks minimal 3 karakter."
+  },
+  {
+    "field": "email",
+    "label": "Email",
+    "code": "invalid_string",
+    "message": "Format email tidak valid."
+  },
+  {
+    "field": "tags.1",
+    "label": "Tags item ke-2",
+    "code": "invalid_array",
+    "message": "Daftar tidak boleh berisi data duplikat."
+  },
+  {
+    "field": "profile.socials.0.url",
+    "label": "Profile > Socials item ke-1 > URL",
+    "code": "invalid_string",
+    "message": "Format URL tidak valid."
+  },
+  {
+    "field": "",
+    "label": "Form",
+    "code": "unknown_keys",
+    "message": "Key tidak dikenal: extra."
+  }
+]
+summary (custom labels): [
+  {
+    "field": "name",
+    "label": "Nama",
+    "code": "too_small",
+    "message": "Panjang teks minimal 3 karakter."
+  },
+  {
+    "field": "email",
+    "label": "Email",
+    "code": "invalid_string",
+    "message": "Format email tidak valid."
+  },
+  {
+    "field": "tags.1",
+    "label": "Tag kedua",
+    "code": "invalid_array",
+    "message": "Daftar tidak boleh berisi data duplikat."
+  },
+  {
+    "field": "profile.socials.0.url",
+    "label": "URL sosial pertama",
+    "code": "invalid_string",
+    "message": "Format URL tidak valid."
+  },
+  {
+    "field": "",
+    "label": "Form",
+    "code": "unknown_keys",
+    "message": "Key tidak dikenal: extra."
+  }
+]
+summary (dot path): [
+  {
+    "field": "name",
+    "label": "name",
+    "code": "too_small",
+    "message": "Panjang teks minimal 3 karakter."
+  },
+  {
+    "field": "email",
+    "label": "email",
+    "code": "invalid_string",
+    "message": "Format email tidak valid."
+  },
+  {
+    "field": "tags.1",
+    "label": "tags.1",
+    "code": "invalid_array",
+    "message": "Daftar tidak boleh berisi data duplikat."
+  },
+  {
+    "field": "profile.socials.0.url",
+    "label": "profile.socials.0.url",
+    "code": "invalid_string",
+    "message": "Format URL tidak valid."
+  },
+  {
+    "field": "",
+    "label": "Form",
+    "code": "unknown_keys",
+    "message": "Key tidak dikenal: extra."
+  }
+]
+
+=== DEEP PARTIAL TEST ===
+patch success: true
+
+=== PARSE THROW TEST ===
+thrown message: Panjang teks minimal 3 karakter.
