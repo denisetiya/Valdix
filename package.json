@@ -1,10 +1,14 @@
 {
-  "name": "@denisetiya/valdix",
+  "name": "@atomix/valdix",
   "version": "1.0.0",
   "description": "Zero-dependency high-performance schema validation with multilingual errors.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/denisetiya/Valdix.git"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
