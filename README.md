@@ -1,21 +1,22 @@
 # valdix
 
-`valdix` adalah library validasi schema TypeScript yang terinspirasi dari Zod dengan beberapa fitur tambahan:
+`valdix` is a TypeScript schema validation library inspired by Zod, with additional features for backend and frontend integration:
 
-- zero dependency runtime
-- performa tinggi
-- API simpel
-- pesan error multi-language
+- zero runtime dependencies
+- high performance
+- simple API surface
+- multi-language error messages
+- structured error contracts for APIs and forms
 
-## Kenapa valdix
+## Why valdix
 
-- Ringan: tidak ada dependency runtime eksternal.
-- Cepat: parser sinkron dengan alokasi minimal.
-- Mudah: `parse` / `safeParse` dan chaining schema seperti Zod.
-- Multi-language: bawaan `id` dan `en`, bisa tambah locale sendiri.
-- Modular: source dipisah ke `core`, `schemas`, dan `factories` agar scalable.
+- Lightweight: no external runtime dependencies.
+- Fast: synchronous parser with minimal allocations.
+- Practical: `parse` / `safeParse` plus chainable schema APIs.
+- Internationalized: built-in `id` and `en` locales, plus custom locale registration.
+- Modular: source code is organized into `core`, `schemas`, and `factories`.
 
-## Instalasi
+## Installation
 
 ```bash
 pnpm add valdix
@@ -41,25 +42,25 @@ const result = UserSchema.safeParse({
 });
 
 if (!result.success) {
-  console.log(result.error.issues);
+  console.log(result.error.toResponse());
 } else {
   console.log(result.data);
 }
 ```
 
-## API Dasar
+## Core API
 
-- `parse(input, options?)`: lempar `ValdixError` jika invalid.
-- `safeParse(input, options?)`: return `{ success, data | error }`.
-- `parseAsync(input, options?)` dan `safeParseAsync(input, options?)` untuk validasi async.
+- `parse(input, options?)`: throws `ValdixError` when invalid.
+- `safeParse(input, options?)`: returns `{ success, data | error }`.
+- `parseAsync(input, options?)`, `safeParseAsync(input, options?)`: async parsing flow.
 - `optional()`, `nullable()`, `nullish()`, `default(value)`, `catch(value)`.
 - `refine(check, message?)`, `refineAsync(check, message?)`.
 - `superRefine((value, ctx) => ctx.addIssue(...))`, `superRefineAsync(...)`.
 - `transform(fn)`, `pipe(schema)`.
-- `array()`, `or(schema)`, `and(schema)` di level base schema.
-- `metadata({...})`, `brand("BrandName")` untuk kontrak schema yang lebih kuat.
+- `array()`, `or(schema)`, `and(schema)`.
+- `metadata({...})`, `brand("BrandName")`.
 
-## Schema Factory
+## Schema Factories
 
 - `v.string()`
 - `v.number()`
@@ -85,37 +86,33 @@ if (!result.success) {
 - `v.preprocess(fn, schema)`
 - `v.coerce.string()`, `v.coerce.number()`, `v.coerce.bigint()`, `v.coerce.boolean()`, `v.coerce.date()`
 
-## Fitur Baru
+## Feature Highlights
 
-- `required` issue code untuk key object yang tidak ada.
-- Regex check aman untuk `RegExp` dengan flag `g` / `y`.
-- `ObjectSchema` tambahan: `omit`, `merge`, `keyof`, `partial`.
-- `StringSchema` tambahan: `uuid()`, `datetime()`.
-- `NumberSchema` tambahan: `multipleOf()`.
-- Error API path-first: `find(path)`, `findAll(path)`, `contains(path)`.
-- Error formatter: `summary()` dan `toResponse()` untuk payload API.
-- Error contract RFC7807: `toProblemDetails()`.
-- Standalone error utils: `findIssue`, `findIssues`, `containsIssue`, `buildErrorResponse`.
-- `ObjectSchema` tambahan: `deepPartial()`, `deepRequired()`, `required(keys?)`.
-- `ArraySchema` tambahan: `unique(selector?)`.
-- `StringSchema` tambahan: `slug()`, `cuid()`.
-- Factory baru: `v.strictObject(shape)`, `v.strictRecord(...)`.
-- Export schema: `toJSONSchema(schema)`, `toOpenAPISchema(schema)`.
+- Path-first error API: `find(path)`, `findAll(path)`, `contains(path)`.
+- Structured summary output: `summary()` returns JSON objects (`field`, `label`, `code`, `message`).
+- API-ready error output: `toResponse()`.
+- RFC7807 output: `toProblemDetails()`.
+- Error utilities: `findIssue`, `findIssues`, `containsIssue`, `buildErrorResponse`, `buildProblemDetails`.
+- Object utilities: `partial()`, `deepPartial()`, `required(keys?)`, `deepRequired()`, `omit()`, `merge()`, `keyof()`.
+- Collection utility: `array().unique(selector?)`.
+- String utilities: `slug()`, `cuid()`, `uuid()`, `datetime()`.
+- Schema export: `toJSONSchema(schema)`, `toOpenAPISchema(schema)`.
 - React helper subpath: `valdix/react`.
 
-## Multi-language Error
+## Multi-language Errors
 
-### Locale bawaan
+### Built-in locales
 
 - `id` (default)
 - `en`
 
-### Ganti locale global
+### Set global locale
 
 ```ts
 import { v } from "valdix";
 
 v.setLocale("en");
+// or v.configure({ locale: "en" });
 ```
 
 ### Override locale per parse
@@ -125,14 +122,14 @@ const schema = v.string().email();
 const result = schema.safeParse("invalid-email", { locale: "en" });
 ```
 
-### Tambah locale custom
+### Register a custom locale
 
 ```ts
 import { v } from "valdix";
 
 v.registerLocale("jv", {
-  custom: "Input ora valid.",
-  invalid_type: "Tipe data ora cocok."
+  custom: "Invalid input (custom locale).",
+  invalid_type: "Invalid value type."
 });
 ```
 
@@ -147,8 +144,6 @@ v.configure({
 ```
 
 ## Error Handling
-
-`ValdixError` sekarang punya query API yang lebih mudah diambil per path:
 
 ```ts
 import { ValdixError, v } from "valdix";
@@ -165,41 +160,32 @@ try {
   });
 } catch (error) {
   if (error instanceof ValdixError) {
-    console.log(error.find("profile.email")); // issue pertama di path
-    console.log(error.findAll("profile.email")); // semua issue di path
-    console.log(error.contains("profile.email")); // true/false
+    console.log(error.find("profile.email"));
+    console.log(error.findAll("profile.email"));
+    console.log(error.contains("profile.email"));
+
     console.log(error.summary());
-    // [{ field: "profile.email", label: "Profile > Email", code: "invalid_string", message: "Format email tidak valid." }]
-    console.log(error.summary({ pathStyle: "dot" }));
-    // [{ field: "profile.email", label: "profile.email", code: "invalid_string", message: "Format email tidak valid." }]
+    // [{ field, label, code, message }]
+
     console.log(error.summary({
-      labels: { "profile.email": "Email Pengguna" }
+      labels: { "profile.email": "User Email" }
     }));
-    // [{ field: "profile.email", label: "Email Pengguna", code: "invalid_string", message: "Format email tidak valid." }]
-    console.log(error.toResponse()); // payload siap kirim ke API response
-    console.log(error.toProblemDetails()); // payload RFC7807 (problem+json)
+
+    console.log(error.toResponse({
+      message: "Validation failed"
+    }));
+
+    console.log(error.toProblemDetails({
+      title: "Payload validation failed",
+      instance: "/api/users"
+    }));
   }
 }
 ```
 
-Untuk util functional (tanpa class method), gunakan:
-
-```ts
-import {
-  buildErrorResponse,
-  containsIssue,
-  findIssue,
-  findIssues
-} from "valdix";
-```
-
-`flatten()` tetap tersedia untuk kompatibilitas, tetapi disarankan pakai `toResponse()`.
-
-`toResponse()` sudah mengembalikan `summary` dalam format JSON terstruktur (`field`, `label`, `code`, `message`) dan `details`, jadi bisa langsung dipakai di backend/frontend tanpa formatting tambahan. Kamu juga bisa kirim `summaryOptions.labels` untuk custom label per field path.
+`flatten()` is still available for compatibility, but `toResponse()` is recommended.
 
 ## Schema Export
-
-Gunakan exporter bawaan untuk dokumentasi atau OpenAPI:
 
 ```ts
 import { toJSONSchema, toOpenAPISchema, v } from "valdix";
@@ -209,7 +195,7 @@ const UserSchema = v.object({
   email: v.string().email()
 }).metadata({
   title: "UserPayload",
-  description: "Schema untuk payload user"
+  description: "Schema for user payload"
 });
 
 const jsonSchema = toJSONSchema(UserSchema);
@@ -218,7 +204,7 @@ const openApiSchema = toOpenAPISchema(UserSchema);
 
 ## React Helper
 
-Subpath `valdix/react` bisa langsung mapping error ke state form:
+Use `valdix/react` for form-oriented error mapping:
 
 ```ts
 import { toFormErrorState } from "valdix/react";
@@ -228,7 +214,7 @@ const state = toFormErrorState(result.error, {
 });
 ```
 
-## Contoh Pola Nyata
+## Real-World Pattern Examples
 
 ```ts
 const SlugSchema = v
@@ -267,7 +253,7 @@ pnpm run bench
 
 ## Wiki Documentation
 
-Detailed docs are available in the wiki folder:
+Detailed docs are available in:
 
 - [Wiki Home](./docs/wiki/Home.md)
 - [Getting Started](./docs/wiki/getting-started.md)
@@ -281,7 +267,7 @@ Detailed docs are available in the wiki folder:
 
 ## Benchmark
 
-Benchmark sederhana tersedia di `benchmarks/basic.bench.mjs`.
+A basic benchmark is available at `benchmarks/basic.bench.mjs`.
 
 ```bash
 pnpm run bench
