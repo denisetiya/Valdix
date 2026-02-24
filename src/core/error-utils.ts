@@ -4,6 +4,8 @@ import type {
   ErrorResponseOptions,
   ErrorSummaryItem,
   ErrorSummaryOptions,
+  ProblemDetails,
+  ProblemDetailsOptions,
   PathSegment,
   PathInput,
   ValdixIssue
@@ -11,6 +13,7 @@ import type {
 import { pathInputToString, pathToString } from "./utils.js";
 
 const DEFAULT_ERROR_MESSAGE = "Validation error";
+const DEFAULT_PROBLEM_TYPE = "https://valdix.dev/problems/validation-error";
 const CAMEL_BOUNDARY = /([a-z0-9])([A-Z])/g;
 const SYMBOL_SEPARATOR = /[_-]+/g;
 const WORD_SEPARATOR = /\s+/;
@@ -250,5 +253,25 @@ export const buildErrorResponse = (
     fieldErrors,
     summary: summarizeIssues(issues, summaryOptions),
     details
+  };
+};
+
+export const buildProblemDetails = (
+  issues: readonly ValdixIssue[],
+  options?: ProblemDetailsOptions
+): ProblemDetails => {
+  const response = buildErrorResponse(issues, options);
+
+  return {
+    type: options?.typeUri ?? DEFAULT_PROBLEM_TYPE,
+    title: options?.title ?? "Validation Failed",
+    status: options?.status ?? 422,
+    detail: response.message,
+    ...(typeof options?.instance === "string"
+      ? { instance: options.instance }
+      : {}),
+    errors: response.summary,
+    fieldErrors: response.fieldErrors,
+    issues: response.issues
   };
 };

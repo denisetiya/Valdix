@@ -73,6 +73,10 @@ if (!result.success) {
     "summary (dot path):",
     JSON.stringify(error.summary({ dedupe: true, pathStyle: "dot" }), null, 2)
   );
+  console.log(
+    "problem+json:",
+    JSON.stringify(error.toProblemDetails({ instance: "/demo/users" }), null, 2)
+  );
 }
 
 const PatchSchema = UserSchema.deepPartial();

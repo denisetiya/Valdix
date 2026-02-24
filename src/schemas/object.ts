@@ -41,6 +41,19 @@ type DeepPartialShape<TShape extends ObjectShape> = {
   [K in keyof TShape]: OptionalSchema<DeepPartialSchema<UnwrapOptional<TShape[K]>>>;
 };
 
+type DeepRequiredSchema<TSchema extends BaseSchema<any, any>> =
+  TSchema extends OptionalSchema<infer TInner>
+    ? DeepRequiredSchema<TInner>
+    : TSchema extends ObjectSchema<infer TInnerShape>
+      ? ObjectSchema<DeepRequiredShape<TInnerShape>>
+      : TSchema extends ArraySchema<infer TItem>
+        ? ArraySchema<DeepRequiredSchema<TItem>>
+        : TSchema;
+
+type DeepRequiredShape<TShape extends ObjectShape> = {
+  [K in keyof TShape]-?: DeepRequiredSchema<UnwrapOptional<TShape[K]>>;
+};
+
 type Simplify<T> = {
   [K in keyof T]: T[K];
 } & {};
@@ -91,6 +104,22 @@ const acceptsMissingKey = (
 ): { accepted: true; value: unknown } | { accepted: false } => {
   const probeContext = ctx.fork();
   const parsed = schema._parse(undefined, probeContext);
+  if (parsed.ok && probeContext.issues.length === 0) {
+    return {
+      accepted: true,
+      value: parsed.value
+    };
+  }
+
+  return { accepted: false };
+};
+
+const acceptsMissingKeyAsync = async (
+  schema: BaseSchema<any, any>,
+  ctx: ParseContext
+): Promise<{ accepted: true; value: unknown } | { accepted: false }> => {
+  const probeContext = ctx.fork();
+  const parsed = await schema._parseAsync(undefined, probeContext);
   if (parsed.ok && probeContext.issues.length === 0) {
     return {
       accepted: true,
@@ -198,6 +227,21 @@ export class ObjectSchema<
     }
 
     return new ObjectSchema(partialShape, this.policy);
+  }
+
+  public deepRequired(): ObjectSchema<DeepRequiredShape<TShape>> {
+    const requiredShape = {} as DeepRequiredShape<TShape>;
+
+    for (const key of this.shapeKeys) {
+      const fieldSchema = this.shape[key] as BaseSchema<any, any>;
+      const deepSchema = this.deepRequiredSchema(
+        fieldSchema
+      ) as DeepRequiredSchema<TShape[typeof key]>;
+
+      requiredShape[key] = deepSchema as DeepRequiredShape<TShape>[typeof key];
+    }
+
+    return new ObjectSchema(requiredShape, this.policy);
   }
 
   public required(): ObjectSchema<RequiredShape<TShape>>;
@@ -319,6 +363,92 @@ export class ObjectSchema<
     return ok(output as ObjectOutput<TShape>);
   }
 
+  public async _parseAsync(
+    input: unknown,
+    ctx: ParseContext
+  ): Promise<InternalResult<ObjectOutput<TShape>>> {
+    if (!isPlainObject(input)) {
+      ctx.addIssue({
+        code: "invalid_type",
+        expected: "object",
+        received: getValueType(input)
+      });
+      return invalid;
+    }
+
+    const source = input as Record<string, unknown>;
+    const output: Record<string, unknown> = {};
+    let hasError = false;
+
+    for (const key of this.shapeKeys) {
+      const keyString = String(key);
+      const schema = this.shape[key] as TShape[typeof key];
+      const exists = hasOwn(source, keyString);
+
+      if (!exists) {
+        const missing = await acceptsMissingKeyAsync(schema, ctx);
+        if (missing.accepted) {
+          if (typeof missing.value !== "undefined") {
+            output[keyString] = missing.value;
+          }
+          continue;
+        }
+
+        ctx.path.push(keyString);
+        ctx.addIssue({
+          code: "required"
+        });
+        ctx.path.pop();
+        hasError = true;
+        if (ctx.abortEarly) {
+          return invalid;
+        }
+        continue;
+      }
+
+      const rawValue = source[keyString];
+      ctx.path.push(keyString);
+      const parsed = await schema._parseAsync(rawValue, ctx);
+      ctx.path.pop();
+
+      if (!parsed.ok) {
+        hasError = true;
+        if (ctx.abortEarly) {
+          return invalid;
+        }
+        continue;
+      }
+
+      if (typeof parsed.value !== "undefined") {
+        output[keyString] = parsed.value;
+      }
+    }
+
+    const sourceKeys = Object.keys(source);
+    const unknownKeys = sourceKeys.filter((key) => !hasOwn(this.shape, key));
+
+    if (this.policy === "strict" && unknownKeys.length > 0) {
+      ctx.addIssue({
+        code: "unknown_keys",
+        keys: unknownKeys
+      });
+      hasError = true;
+      if (ctx.abortEarly) {
+        return invalid;
+      }
+    } else if (this.policy === "passthrough" && unknownKeys.length > 0) {
+      for (const key of unknownKeys) {
+        output[key] = source[key];
+      }
+    }
+
+    if (hasError) {
+      return invalid;
+    }
+
+    return ok(output as ObjectOutput<TShape>);
+  }
+
   private deepPartialSchema<TSchema extends BaseSchema<any, any>>(
     schema: TSchema
   ): BaseSchema<any, any> {
@@ -333,6 +463,25 @@ export class ObjectSchema<
     if (schema instanceof ArraySchema) {
       const itemSchema = schema.getItemSchema();
       return schema.withItem(this.deepPartialSchema(itemSchema));
+    }
+
+    return schema;
+  }
+
+  private deepRequiredSchema<TSchema extends BaseSchema<any, any>>(
+    schema: TSchema
+  ): BaseSchema<any, any> {
+    if (schema instanceof OptionalSchema) {
+      return this.deepRequiredSchema(schema.unwrap());
+    }
+
+    if (schema instanceof ObjectSchema) {
+      return schema.deepRequired();
+    }
+
+    if (schema instanceof ArraySchema) {
+      const itemSchema = schema.getItemSchema();
+      return schema.withItem(this.deepRequiredSchema(itemSchema));
     }
 
     return schema;

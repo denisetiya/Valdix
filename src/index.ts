@@ -6,7 +6,10 @@ export type {
   ErrorMap,
   ErrorSummaryItem,
   ErrorSummaryOptions,
+  ProblemDetails,
+  ProblemDetailsOptions,
   PathInput,
+  SchemaMetadata,
   IssueCode,
   IssueInput,
   IssueKind,
@@ -17,12 +20,14 @@ export type {
   SafeParseFailure,
   SafeParseResult,
   SafeParseSuccess,
+  SuperRefinementContext,
   ValdixIssue
 } from "./core/types.js";
 
 export { ValdixError } from "./core/error.js";
 export {
   buildErrorResponse,
+  buildProblemDetails,
   containsIssue,
   findIssue,
   findIssues,
@@ -30,20 +35,30 @@ export {
   summarizeIssues
 } from "./core/error-utils.js";
 export {
+  toJSONSchema,
+  toOpenAPISchema
+} from "./core/json-schema.js";
+export {
   ArraySchema,
+  AsyncRefinementSchema,
+  AsyncSuperRefinementSchema,
   BaseSchema,
+  BrandSchema,
   CatchSchema,
   DefaultSchema,
   IntersectionSchema,
+  MetadataSchema,
   NullableSchema,
   OptionalSchema,
   PipelineSchema,
   PreprocessSchema,
   RefinementSchema,
+  SuperRefinementSchema,
   TransformSchema,
   UnionSchema
 } from "./core/schema.js";
 export type {
+  Brand,
   Infer,
   InputOf,
   OutputOf,
@@ -78,6 +93,7 @@ export {
   MapSchema,
   RecordSchema,
   SetSchema,
+  StrictRecordSchema,
   TupleSchema
 } from "./schemas/collections.js";
 export type {
@@ -117,6 +133,7 @@ export {
   preprocess,
   record,
   set,
+  strictRecord,
   strictObject,
   string,
   tuple,
@@ -145,6 +162,7 @@ import {
   preprocess,
   record,
   set,
+  strictRecord,
   strictObject,
   string,
   tuple,
@@ -159,6 +177,10 @@ import {
   setGlobalErrorMap,
   setLocale
 } from "./core/config.js";
+import {
+  toJSONSchema,
+  toOpenAPISchema
+} from "./core/json-schema.js";
 
 export const v = {
   string,
@@ -179,6 +201,7 @@ export const v = {
   array,
   tuple,
   record,
+  strictRecord,
   set,
   map,
   union,
@@ -186,6 +209,8 @@ export const v = {
   discriminatedUnion,
   preprocess,
   coerce,
+  toJSONSchema,
+  toOpenAPISchema,
   configure,
   setLocale,
   getLocale,

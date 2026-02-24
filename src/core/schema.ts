@@ -14,6 +14,12 @@ import type {
 } from "./types.js";
 import { isPlainObject } from "./utils.js";
 
+const isPromiseLike = (value: unknown): value is Promise<unknown> =>
+  typeof value === "object" &&
+  value !== null &&
+  "then" in value &&
+  typeof (value as { then?: unknown }).then === "function";
+
 export abstract class BaseSchema<TOutput, TInput = TOutput> {
   public parse(input: TInput, options?: ParseOptions): TOutput {
     const result = this.safeParse(input, options);
@@ -194,8 +200,8 @@ export abstract class BaseSchema<TOutput, TInput = TOutput> {
     return new MetadataSchema(this as BaseSchema<TOutput, TInput>, metadata);
   }
 
-  public brand<TBrand extends string>(): BrandSchema<BaseSchema<TOutput, TInput>, TBrand> {
-    return new BrandSchema(this as BaseSchema<TOutput, TInput>);
+  public brand<TBrand extends string>(name?: TBrand): BrandSchema<BaseSchema<TOutput, TInput>, TBrand> {
+    return new BrandSchema(this as BaseSchema<TOutput, TInput>, name);
   }
 
   public abstract _parse(
@@ -485,6 +491,320 @@ export class RefinementSchema<
 
     ctx.addIssue(issue);
     return invalid;
+  }
+}
+
+export class AsyncRefinementSchema<
+  TSchema extends BaseSchema<any, any>
+> extends BaseSchema<OutputOf<TSchema>, InputOf<TSchema>> {
+  public constructor(
+    private readonly inner: TSchema,
+    private readonly check: (value: OutputOf<TSchema>) => Promise<boolean | string | IssueInput>,
+    private readonly fallbackMessage?: string
+  ) {
+    super();
+  }
+
+  public _parse(input: unknown, ctx: ParseContext): InternalResult<OutputOf<TSchema>> {
+    const parsed = this.inner._parse(input, ctx);
+    if (!parsed.ok) {
+      return invalid;
+    }
+
+    try {
+      void this.check(parsed.value);
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: this.fallbackMessage ?? "Async refinement threw an error."
+      });
+      return invalid;
+    }
+
+    ctx.addIssue({
+      code: "custom",
+      message: "Async refinement detected. Use parseAsync/safeParseAsync."
+    });
+    return invalid;
+  }
+
+  public async _parseAsync(
+    input: unknown,
+    ctx: ParseContext
+  ): Promise<InternalResult<OutputOf<TSchema>>> {
+    const parsed = await this.inner._parseAsync(input, ctx);
+    if (!parsed.ok) {
+      return invalid;
+    }
+
+    let result: boolean | string | IssueInput;
+    try {
+      result = await this.check(parsed.value);
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: this.fallbackMessage ?? "Async refinement threw an error."
+      });
+      return invalid;
+    }
+
+    if (result === true) {
+      return parsed;
+    }
+
+    if (result === false) {
+      ctx.addIssue({
+        code: "custom",
+        message: this.fallbackMessage ?? "Invalid input."
+      });
+      return invalid;
+    }
+
+    if (typeof result === "string") {
+      ctx.addIssue({
+        code: "custom",
+        message: result
+      });
+      return invalid;
+    }
+
+    const issue: IssueInput = {
+      ...result,
+      code: result.code ?? "custom"
+    };
+
+    if (typeof result.message === "string") {
+      issue.message = result.message;
+    } else if (typeof this.fallbackMessage === "string") {
+      issue.message = this.fallbackMessage;
+    }
+
+    ctx.addIssue(issue);
+    return invalid;
+  }
+}
+
+export class SuperRefinementSchema<
+  TSchema extends BaseSchema<any, any>
+> extends BaseSchema<OutputOf<TSchema>, InputOf<TSchema>> {
+  public constructor(
+    private readonly inner: TSchema,
+    private readonly check: (
+      value: OutputOf<TSchema>,
+      context: SuperRefinementContext
+    ) => void
+  ) {
+    super();
+  }
+
+  public _parse(input: unknown, ctx: ParseContext): InternalResult<OutputOf<TSchema>> {
+    const parsed = this.inner._parse(input, ctx);
+    if (!parsed.ok) {
+      return invalid;
+    }
+
+    const beforeCount = ctx.issues.length;
+
+    try {
+      this.check(parsed.value, {
+        addIssue: (issue) => {
+          ctx.addIssue({
+            ...issue,
+            code: issue.code ?? "custom"
+          });
+        }
+      });
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: "Super refinement failed."
+      });
+      return invalid;
+    }
+
+    return ctx.issues.length === beforeCount
+      ? parsed
+      : invalid;
+  }
+
+  public async _parseAsync(
+    input: unknown,
+    ctx: ParseContext
+  ): Promise<InternalResult<OutputOf<TSchema>>> {
+    const parsed = await this.inner._parseAsync(input, ctx);
+    if (!parsed.ok) {
+      return invalid;
+    }
+
+    const beforeCount = ctx.issues.length;
+
+    try {
+      const result = this.check(parsed.value, {
+        addIssue: (issue) => {
+          ctx.addIssue({
+            ...issue,
+            code: issue.code ?? "custom"
+          });
+        }
+      });
+
+      if (isPromiseLike(result)) {
+        await result;
+      }
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: "Super refinement failed."
+      });
+      return invalid;
+    }
+
+    return ctx.issues.length === beforeCount
+      ? parsed
+      : invalid;
+  }
+}
+
+export class AsyncSuperRefinementSchema<
+  TSchema extends BaseSchema<any, any>
+> extends BaseSchema<OutputOf<TSchema>, InputOf<TSchema>> {
+  public constructor(
+    private readonly inner: TSchema,
+    private readonly check: (
+      value: OutputOf<TSchema>,
+      context: SuperRefinementContext
+    ) => Promise<void>
+  ) {
+    super();
+  }
+
+  public _parse(input: unknown, ctx: ParseContext): InternalResult<OutputOf<TSchema>> {
+    const parsed = this.inner._parse(input, ctx);
+    if (!parsed.ok) {
+      return invalid;
+    }
+
+    let result: Promise<void>;
+    try {
+      result = this.check(parsed.value, {
+        addIssue: (issue) => {
+          ctx.addIssue({
+            ...issue,
+            code: issue.code ?? "custom"
+          });
+        }
+      });
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: "Async super refinement failed."
+      });
+      return invalid;
+    }
+
+    if (isPromiseLike(result)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Async super refinement detected. Use parseAsync/safeParseAsync."
+      });
+      return invalid;
+    }
+
+    return parsed;
+  }
+
+  public async _parseAsync(
+    input: unknown,
+    ctx: ParseContext
+  ): Promise<InternalResult<OutputOf<TSchema>>> {
+    const parsed = await this.inner._parseAsync(input, ctx);
+    if (!parsed.ok) {
+      return invalid;
+    }
+
+    const beforeCount = ctx.issues.length;
+
+    try {
+      await this.check(parsed.value, {
+        addIssue: (issue) => {
+          ctx.addIssue({
+            ...issue,
+            code: issue.code ?? "custom"
+          });
+        }
+      });
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: "Async super refinement failed."
+      });
+      return invalid;
+    }
+
+    return ctx.issues.length === beforeCount
+      ? parsed
+      : invalid;
+  }
+}
+
+export class MetadataSchema<
+  TSchema extends BaseSchema<any, any>
+> extends BaseSchema<OutputOf<TSchema>, InputOf<TSchema>> {
+  public constructor(
+    private readonly inner: TSchema,
+    public readonly meta: SchemaMetadata
+  ) {
+    super();
+  }
+
+  public _parse(input: unknown, ctx: ParseContext): InternalResult<OutputOf<TSchema>> {
+    return this.inner._parse(input, ctx);
+  }
+
+  public async _parseAsync(
+    input: unknown,
+    ctx: ParseContext
+  ): Promise<InternalResult<OutputOf<TSchema>>> {
+    return this.inner._parseAsync(input, ctx);
+  }
+
+  public unwrap(): TSchema {
+    return this.inner;
+  }
+}
+
+export class BrandSchema<
+  TSchema extends BaseSchema<any, any>,
+  TBrand extends string
+> extends BaseSchema<Brand<OutputOf<TSchema>, TBrand>, InputOf<TSchema>> {
+  public constructor(
+    private readonly inner: TSchema,
+    public readonly brandName?: TBrand
+  ) {
+    super();
+  }
+
+  public _parse(input: unknown, ctx: ParseContext): InternalResult<Brand<OutputOf<TSchema>, TBrand>> {
+    const parsed = this.inner._parse(input, ctx);
+    if (!parsed.ok) {
+      return invalid;
+    }
+    return ok(parsed.value as Brand<OutputOf<TSchema>, TBrand>);
+  }
+
+  public async _parseAsync(
+    input: unknown,
+    ctx: ParseContext
+  ): Promise<InternalResult<Brand<OutputOf<TSchema>, TBrand>>> {
+    const parsed = await this.inner._parseAsync(input, ctx);
+    if (!parsed.ok) {
+      return invalid;
+    }
+    return ok(parsed.value as Brand<OutputOf<TSchema>, TBrand>);
+  }
+
+  public unwrap(): TSchema {
+    return this.inner;
   }
 }
 

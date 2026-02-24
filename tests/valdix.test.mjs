@@ -4,13 +4,22 @@ import assert from "node:assert/strict";
 import {
   ValdixError,
   buildErrorResponse,
+  buildProblemDetails,
   containsIssue,
   findIssue,
   findIssues,
   groupIssuesByPath,
   summarizeIssues,
+  toJSONSchema,
+  toOpenAPISchema,
   v
 } from "../dist/index.js";
+import {
+  buildTouchedFromSummary,
+  filterFieldErrorsByTouched,
+  getFieldError,
+  toFormErrorState
+} from "../dist/react.js";
 
 test("parse object with default and optional field", () => {
   const schema = v.object({
@@ -274,6 +283,92 @@ test("toResponse returns API-ready error payload", () => {
   assert.equal(payload.details[0].label, "Nama Pengguna");
 });
 
+test("problem details formatter returns RFC7807 style payload", () => {
+  const schema = v.object({
+    email: v.string().email()
+  });
+
+  const result = schema.safeParse({ email: "wrong" });
+  assert.equal(result.success, false);
+  if (result.success) {
+    assert.fail("Expected parse to fail");
+  }
+
+  const problem = result.error.toProblemDetails({
+    title: "Payload validation failed",
+    instance: "/api/users"
+  });
+
+  assert.equal(problem.type, "https://valdix.dev/problems/validation-error");
+  assert.equal(problem.title, "Payload validation failed");
+  assert.equal(problem.status, 422);
+  assert.equal(problem.instance, "/api/users");
+  assert.equal(problem.errors[0].field, "email");
+
+  const problemFromUtil = buildProblemDetails(result.error.issues);
+  assert.equal(problemFromUtil.status, 422);
+});
+
+test("parseAsync supports async refine for nested schema", async () => {
+  const schema = v.object({
+    username: v.string().refineAsync(async (value) => value.startsWith("usr_"))
+  });
+
+  const passed = await schema.safeParseAsync({ username: "usr_123" });
+  assert.equal(passed.success, true);
+
+  const failed = await schema.safeParseAsync({ username: "john" });
+  assert.equal(failed.success, false);
+  if (failed.success) {
+    assert.fail("Expected parse to fail");
+  }
+  assert.equal(failed.error.issues[0].path.join("."), "username");
+});
+
+test("superRefine and superRefineAsync can push cross-field issues", async () => {
+  const base = v.object({
+    password: v.string().min(8),
+    confirmPassword: v.string()
+  });
+
+  const syncSchema = base.superRefine((value, ctx) => {
+    if (value.password !== value.confirmPassword) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["confirmPassword"],
+        message: "Konfirmasi password tidak sama."
+      });
+    }
+  });
+
+  const syncResult = syncSchema.safeParse({
+    password: "password123",
+    confirmPassword: "password321"
+  });
+  assert.equal(syncResult.success, false);
+
+  const asyncSchema = base.superRefineAsync(async (value, ctx) => {
+    await Promise.resolve();
+    if (value.password === "forbidden!") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["password"],
+        message: "Password tidak diizinkan."
+      });
+    }
+  });
+
+  const asyncResult = await asyncSchema.safeParseAsync({
+    password: "forbidden!",
+    confirmPassword: "forbidden!"
+  });
+  assert.equal(asyncResult.success, false);
+  if (asyncResult.success) {
+    assert.fail("Expected parse to fail");
+  }
+  assert.equal(asyncResult.error.issues[0].path.join("."), "password");
+});
+
 test("regex with global flag remains deterministic across parses", () => {
   const schema = v.string().regex(/^[a-z]+$/g);
   assert.equal(schema.parse("hello"), "hello");
@@ -346,6 +441,32 @@ test("object utilities: deepPartial and required", () => {
   assert.equal(requiredAll.safeParse({ profile: {} }).success, false);
 });
 
+test("object utility: deepRequired makes nested optional values required", () => {
+  const schema = v.object({
+    profile: v.object({
+      nickname: v.string().optional(),
+      socials: v.array(
+        v.object({
+          url: v.string().url().optional()
+        })
+      ).optional()
+    }).optional()
+  });
+
+  const required = schema.deepRequired();
+  assert.equal(required.safeParse({}).success, false);
+
+  const valid = required.safeParse({
+    profile: {
+      nickname: "deni",
+      socials: [
+        { url: "https://example.com" }
+      ]
+    }
+  });
+  assert.equal(valid.success, true);
+});
+
 test("strictObject factory enforces strict unknown key policy", () => {
   const schema = v.strictObject({
     id: v.number()
@@ -353,6 +474,24 @@ test("strictObject factory enforces strict unknown key policy", () => {
 
   assert.equal(schema.safeParse({ id: 1, extra: true }).success, false);
   assert.equal(schema.safeParse({ id: 1 }).success, true);
+});
+
+test("strictRecord validates key schema and value schema", () => {
+  const schema = v.strictRecord(
+    v.string().regex(/^[a-z]+$/),
+    v.number().int()
+  );
+
+  const passed = schema.safeParse({
+    good: 1,
+    better: 2
+  });
+  assert.equal(passed.success, true);
+
+  const failed = schema.safeParse({
+    "bad-key": 1
+  });
+  assert.equal(failed.success, false);
 });
 
 test("array unique supports selector for object arrays", () => {
@@ -387,6 +526,60 @@ test("string slug and cuid validators work", () => {
 
   assert.equal(v.string().cuid().safeParse("ck8x7x9w00000a1b2c3d4e5f").success, true);
   assert.equal(v.string().cuid().safeParse("user-123").success, false);
+});
+
+test("metadata and schema export generate JSON schema and OpenAPI schema", () => {
+  const schema = v.object({
+    id: v.string().uuid().brand("UserId"),
+    email: v.string().email(),
+    tags: v.array(v.string()).unique()
+  }).metadata({
+    title: "UserPayload",
+    description: "Schema untuk user payload"
+  });
+
+  const jsonSchema = toJSONSchema(schema);
+  assert.equal(jsonSchema.title, "UserPayload");
+  assert.equal(jsonSchema.description, "Schema untuk user payload");
+  assert.equal(jsonSchema.type, "object");
+  assert.equal(jsonSchema.properties.id.format, "uuid");
+  assert.equal(jsonSchema.properties.id["x-brand"], "UserId");
+
+  const openApiSchema = toOpenAPISchema(v.string().nullable());
+  assert.equal(openApiSchema.type, "string");
+  assert.equal(openApiSchema.nullable, true);
+});
+
+test("react helper maps valdix error to form-friendly state", () => {
+  const schema = v.object({
+    email: v.string().email(),
+    age: v.number().positive()
+  });
+
+  const result = schema.safeParse({
+    email: "wrong",
+    age: -1
+  });
+  assert.equal(result.success, false);
+  if (result.success) {
+    assert.fail("Expected parse to fail");
+  }
+
+  const state = toFormErrorState(result.error, {
+    email: true,
+    age: false
+  });
+  assert.equal(state.firstErrorField, "email");
+  assert.equal(getFieldError(state, "email"), "Format email tidak valid.");
+
+  const touchedFromSummary = buildTouchedFromSummary(state.summary);
+  assert.equal(touchedFromSummary.email, true);
+
+  const touchedErrors = filterFieldErrorsByTouched(state.fieldErrors, {
+    email: true
+  });
+  assert.ok(touchedErrors.email.length > 0);
+  assert.equal("age" in touchedErrors, false);
 });
 
 test("discriminated union parses selected branch", () => {

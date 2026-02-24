@@ -61,4 +61,45 @@ export class DiscriminatedUnionSchema<
 
     return ok(parsed.value as OutputOf<TOptions[keyof TOptions]>);
   }
+
+  public async _parseAsync(
+    input: unknown,
+    ctx: ParseContext
+  ): Promise<InternalResult<OutputOf<TOptions[keyof TOptions]>>> {
+    if (!isPlainObject(input)) {
+      ctx.addIssue({
+        code: "invalid_type",
+        expected: "object",
+        received: getValueType(input)
+      });
+      return invalid;
+    }
+
+    const discriminatorValue = input[this.discriminator];
+    if (typeof discriminatorValue !== "string") {
+      ctx.addIssue({
+        code: "invalid_discriminator",
+        discriminator: String(discriminatorValue),
+        allowedDiscriminators: this.discriminatorValues
+      });
+      return invalid;
+    }
+
+    if (!hasOwn(this.options, discriminatorValue)) {
+      ctx.addIssue({
+        code: "invalid_discriminator",
+        discriminator: discriminatorValue,
+        allowedDiscriminators: this.discriminatorValues
+      });
+      return invalid;
+    }
+
+    const targetSchema = this.options[discriminatorValue]!;
+    const parsed = await targetSchema._parseAsync(input, ctx);
+    if (!parsed.ok) {
+      return invalid;
+    }
+
+    return ok(parsed.value as OutputOf<TOptions[keyof TOptions]>);
+  }
 }

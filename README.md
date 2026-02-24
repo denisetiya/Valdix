@@ -1,6 +1,6 @@
 # valdix
 
-`valdix` adalah library validasi schema TypeScript bergaya Zod dengan fokus:
+`valdix` adalah library validasi schema TypeScript yang terinspirasi dari Zod dengan beberapa fitur tambahan:
 
 - zero dependency runtime
 - performa tinggi
@@ -51,9 +51,13 @@ if (!result.success) {
 
 - `parse(input, options?)`: lempar `ValdixError` jika invalid.
 - `safeParse(input, options?)`: return `{ success, data | error }`.
+- `parseAsync(input, options?)` dan `safeParseAsync(input, options?)` untuk validasi async.
 - `optional()`, `nullable()`, `nullish()`, `default(value)`, `catch(value)`.
-- `refine(check, message?)`, `transform(fn)`, `pipe(schema)`.
+- `refine(check, message?)`, `refineAsync(check, message?)`.
+- `superRefine((value, ctx) => ctx.addIssue(...))`, `superRefineAsync(...)`.
+- `transform(fn)`, `pipe(schema)`.
 - `array()`, `or(schema)`, `and(schema)` di level base schema.
+- `metadata({...})`, `brand("BrandName")` untuk kontrak schema yang lebih kuat.
 
 ## Schema Factory
 
@@ -72,6 +76,7 @@ if (!result.success) {
 - `v.array(itemSchema)`
 - `v.tuple([schema1, schema2])`
 - `v.record(valueSchema)`
+- `v.strictRecord(keySchema, valueSchema)`
 - `v.set(itemSchema)`
 - `v.map(keySchema, valueSchema)`
 - `v.union([schema1, schema2])`
@@ -89,11 +94,14 @@ if (!result.success) {
 - `NumberSchema` tambahan: `multipleOf()`.
 - Error API path-first: `find(path)`, `findAll(path)`, `contains(path)`.
 - Error formatter: `summary()` dan `toResponse()` untuk payload API.
+- Error contract RFC7807: `toProblemDetails()`.
 - Standalone error utils: `findIssue`, `findIssues`, `containsIssue`, `buildErrorResponse`.
-- `ObjectSchema` tambahan: `deepPartial()`, `required(keys?)`.
+- `ObjectSchema` tambahan: `deepPartial()`, `deepRequired()`, `required(keys?)`.
 - `ArraySchema` tambahan: `unique(selector?)`.
 - `StringSchema` tambahan: `slug()`, `cuid()`.
-- Factory baru: `v.strictObject(shape)`.
+- Factory baru: `v.strictObject(shape)`, `v.strictRecord(...)`.
+- Export schema: `toJSONSchema(schema)`, `toOpenAPISchema(schema)`.
+- React helper subpath: `valdix/react`.
 
 ## Multi-language Error
 
@@ -169,6 +177,7 @@ try {
     }));
     // [{ field: "profile.email", label: "Email Pengguna", code: "invalid_string", message: "Format email tidak valid." }]
     console.log(error.toResponse()); // payload siap kirim ke API response
+    console.log(error.toProblemDetails()); // payload RFC7807 (problem+json)
   }
 }
 ```
@@ -187,6 +196,37 @@ import {
 `flatten()` tetap tersedia untuk kompatibilitas, tetapi disarankan pakai `toResponse()`.
 
 `toResponse()` sudah mengembalikan `summary` dalam format JSON terstruktur (`field`, `label`, `code`, `message`) dan `details`, jadi bisa langsung dipakai di backend/frontend tanpa formatting tambahan. Kamu juga bisa kirim `summaryOptions.labels` untuk custom label per field path.
+
+## Schema Export
+
+Gunakan exporter bawaan untuk dokumentasi atau OpenAPI:
+
+```ts
+import { toJSONSchema, toOpenAPISchema, v } from "valdix";
+
+const UserSchema = v.object({
+  id: v.string().uuid().brand("UserId"),
+  email: v.string().email()
+}).metadata({
+  title: "UserPayload",
+  description: "Schema untuk payload user"
+});
+
+const jsonSchema = toJSONSchema(UserSchema);
+const openApiSchema = toOpenAPISchema(UserSchema);
+```
+
+## React Helper
+
+Subpath `valdix/react` bisa langsung mapping error ke state form:
+
+```ts
+import { toFormErrorState } from "valdix/react";
+
+const state = toFormErrorState(result.error, {
+  email: true
+});
+```
 
 ## Contoh Pola Nyata
 
@@ -224,6 +264,20 @@ pnpm run test
 pnpm run build
 pnpm run bench
 ```
+
+## Wiki Documentation
+
+Detailed docs are available in the wiki folder:
+
+- [Wiki Home](./docs/wiki/Home.md)
+- [Getting Started](./docs/wiki/getting-started.md)
+- [Schema Guide](./docs/wiki/schema-guide.md)
+- [Error Handling](./docs/wiki/error-handling.md)
+- [Async Validation](./docs/wiki/async-validation.md)
+- [Schema Export](./docs/wiki/schema-export.md)
+- [React Integration](./docs/wiki/react-integration.md)
+- [Recipes](./docs/wiki/recipes.md)
+- [Migration Notes](./docs/wiki/migration-notes.md)
 
 ## Benchmark
 

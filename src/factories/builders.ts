@@ -27,6 +27,7 @@ import {
   MapSchema,
   RecordSchema,
   SetSchema,
+  StrictRecordSchema,
   TupleSchema,
   type TupleItems
 } from "../schemas/collections.js";
@@ -71,6 +72,13 @@ export const tuple = <TItems extends TupleItems>(
 export const record = <TValue extends BaseSchema<any, any>>(
   valueSchema: TValue
 ): RecordSchema<TValue> => new RecordSchema(valueSchema);
+export const strictRecord = <
+  TKey extends BaseSchema<string, any>,
+  TValue extends BaseSchema<any, any>
+>(
+  keySchema: TKey,
+  valueSchema: TValue
+): StrictRecordSchema<TKey, TValue> => new StrictRecordSchema(keySchema, valueSchema);
 export const set = <TItem extends BaseSchema<any, any>>(
   itemSchema: TItem
 ): SetSchema<TItem> => new SetSchema(itemSchema);

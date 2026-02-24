@@ -1,5 +1,6 @@
 import {
   buildErrorResponse,
+  buildProblemDetails,
   summarizeIssues
 } from "./error-utils.js";
 import type {
@@ -8,6 +9,8 @@ import type {
   ErrorSummaryItem,
   ErrorSummaryOptions,
   PathInput,
+  ProblemDetails,
+  ProblemDetailsOptions,
   ValdixIssue
 } from "./types.js";
 import { pathInputToString, pathToString } from "./utils.js";
@@ -73,6 +76,10 @@ export class ValdixError extends Error {
 
   public toResponse(options?: ErrorResponseOptions): ErrorResponse {
     return buildErrorResponse(this.issues, options);
+  }
+
+  public toProblemDetails(options?: ProblemDetailsOptions): ProblemDetails {
+    return buildProblemDetails(this.issues, options);
   }
 
   public toJSON(): { message: string; issues: ValdixIssue[] } {
