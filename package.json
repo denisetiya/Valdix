@@ -1,5 +1,5 @@
 {
-  "name": "valdix",
+  "name": "@denisetiya/valdix",
   "version": "1.0.0",
   "description": "Zero-dependency high-performance schema validation with multilingual errors.",
   "type": "module",
