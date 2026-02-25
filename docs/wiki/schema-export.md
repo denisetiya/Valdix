@@ -7,13 +7,13 @@ Valdix can export schemas to:
 
 Both are available from:
 
-- top-level exports (`import { toJSONSchema } from "valdix"`)
+- top-level exports (`import { toJSONSchema } from "@denisetiya/valdix"`)
 - `v` helper (`v.toJSONSchema(schema)`)
 
 ## Example
 
 ```ts
-import { toJSONSchema, toOpenAPISchema, v } from "valdix";
+import { toJSONSchema, toOpenAPISchema, v } from "@denisetiya/valdix";
 
 const UserSchema = v.object({
   id: v.string().uuid().brand("UserId"),

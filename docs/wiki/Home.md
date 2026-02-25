@@ -6,7 +6,7 @@ Valdix is a zero-dependency TypeScript schema validation library with:
 - Structured error contracts for backend and frontend
 - Multi-language error messages (`id`, `en`, custom catalogs)
 - JSON Schema and OpenAPI export support
-- React-oriented error helpers (`valdix/react`)
+- React-oriented error helpers (`@denisetiya/valdix/react`)
 
 This wiki is the detailed reference for implementation and integration.
 

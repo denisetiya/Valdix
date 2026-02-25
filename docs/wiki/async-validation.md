@@ -12,7 +12,7 @@ Use async parsing when your schema contains asynchronous checks.
 ## Example: Async Username Rule
 
 ```ts
-import { v } from "valdix";
+import { v } from "@denisetiya/valdix";
 
 const UserSchema = v.object({
   username: v.string().refineAsync(async (value) => {

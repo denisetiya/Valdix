@@ -3,13 +3,13 @@
 ## Installation
 
 ```bash
-pnpm add valdix
+pnpm add @denisetiya/valdix
 ```
 
 ## Basic Parse Flow
 
 ```ts
-import { v } from "valdix";
+import { v } from "@denisetiya/valdix";
 
 const UserSchema = v.object({
   id: v.number().int().positive(),
@@ -45,7 +45,7 @@ if (!result.success) {
 ## Global Configuration
 
 ```ts
-import { v } from "valdix";
+import { v } from "@denisetiya/valdix";
 
 v.configure({
   locale: "id",
@@ -68,7 +68,7 @@ const result = UserSchema.safeParse(payload, {
 - Custom locale registration:
 
 ```ts
-import { v } from "valdix";
+import { v } from "@denisetiya/valdix";
 
 v.registerLocale("jv", {
   custom: "Input ora valid.",

@@ -1,6 +1,6 @@
-# valdix
+# @denisetiya/valdix
 
-`valdix` is a TypeScript schema validation library inspired by Zod, with additional features for backend and frontend integration:
+`@denisetiya/valdix` is a TypeScript schema validation library inspired by Zod, with additional features for backend and frontend integration:
 
 - zero runtime dependencies
 - high performance
@@ -8,7 +8,7 @@
 - multi-language error messages
 - structured error contracts for APIs and forms
 
-## Why valdix
+## Why @denisetiya/valdix
 
 - Lightweight: no external runtime dependencies.
 - Fast: synchronous parser with minimal allocations.
@@ -19,13 +19,13 @@
 ## Installation
 
 ```bash
-pnpm add valdix
+pnpm add @denisetiya/valdix
 ```
 
 ## Quick Start
 
 ```ts
-import { v } from "valdix";
+import { v } from "@denisetiya/valdix";
 
 const UserSchema = v.object({
   id: v.number().int().positive(),
@@ -97,7 +97,7 @@ if (!result.success) {
 - Collection utility: `array().unique(selector?)`.
 - String utilities: `slug()`, `cuid()`, `uuid()`, `datetime()`.
 - Schema export: `toJSONSchema(schema)`, `toOpenAPISchema(schema)`.
-- React helper subpath: `valdix/react`.
+- React helper subpath: `@denisetiya/valdix/react`.
 
 ## Multi-language Errors
 
@@ -109,7 +109,7 @@ if (!result.success) {
 ### Set global locale
 
 ```ts
-import { v } from "valdix";
+import { v } from "@denisetiya/valdix";
 
 v.setLocale("en");
 // or v.configure({ locale: "en" });
@@ -125,7 +125,7 @@ const result = schema.safeParse("invalid-email", { locale: "en" });
 ### Register a custom locale
 
 ```ts
-import { v } from "valdix";
+import { v } from "@denisetiya/valdix";
 
 v.registerLocale("jv", {
   custom: "Invalid input (custom locale).",
@@ -136,7 +136,7 @@ v.registerLocale("jv", {
 ### Custom error map
 
 ```ts
-import { v } from "valdix";
+import { v } from "@denisetiya/valdix";
 
 v.configure({
   errorMap: (issue, ctx) => `[${issue.code}] ${ctx.defaultMessage}`
@@ -146,7 +146,7 @@ v.configure({
 ## Error Handling
 
 ```ts
-import { ValdixError, v } from "valdix";
+import { ValdixError, v } from "@denisetiya/valdix";
 
 try {
   v.strictObject({
@@ -188,7 +188,7 @@ try {
 ## Schema Export
 
 ```ts
-import { toJSONSchema, toOpenAPISchema, v } from "valdix";
+import { toJSONSchema, toOpenAPISchema, v } from "@denisetiya/valdix";
 
 const UserSchema = v.object({
   id: v.string().uuid().brand("UserId"),
@@ -204,10 +204,10 @@ const openApiSchema = toOpenAPISchema(UserSchema);
 
 ## React Helper
 
-Use `valdix/react` for form-oriented error mapping:
+Use `@denisetiya/valdix/react` for form-oriented error mapping:
 
 ```ts
-import { toFormErrorState } from "valdix/react";
+import { toFormErrorState } from "@denisetiya/valdix/react";
 
 const state = toFormErrorState(result.error, {
   email: true

@@ -1,6 +1,6 @@
 # React Integration
 
-Valdix provides form-focused helpers in the `valdix/react` subpath.
+Valdix provides form-focused helpers in the `@denisetiya/valdix/react` subpath.
 
 ## Import
 
@@ -10,7 +10,7 @@ import {
   filterFieldErrorsByTouched,
   getFieldError,
   buildTouchedFromSummary
-} from "valdix/react";
+} from "@denisetiya/valdix/react";
 ```
 
 ## Main Helper: `toFormErrorState`

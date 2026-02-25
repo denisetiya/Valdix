@@ -53,5 +53,5 @@ Switch to async parse flow where needed.
 
 ## React Subpath
 
-`valdix/react` is now available for form-state mapping.
+`@denisetiya/valdix/react` is now available for form-state mapping.
 

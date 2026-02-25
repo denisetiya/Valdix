@@ -1,6 +1,6 @@
 {
-  "name": "valdix",
-  "version": "1.0.0",
+  "name": "@denisetiya/valdix",
+  "version": "1.0.1",
   "description": "Zero-dependency high-performance schema validation with multilingual errors.",
   "type": "module",
   "main": "./dist/index.js",

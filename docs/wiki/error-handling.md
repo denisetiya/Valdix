@@ -103,6 +103,6 @@ import {
   findIssues,
   containsIssue,
   summarizeIssues
-} from "valdix";
+} from "@denisetiya/valdix";
 ```
 
